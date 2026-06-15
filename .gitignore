@@ -35,3 +35,4 @@ typesversions
 !.yarn/versions
 .pnp.*
 *.tgz
+/.idea/
