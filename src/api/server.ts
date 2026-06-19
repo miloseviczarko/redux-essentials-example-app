@@ -188,14 +188,24 @@ export const handlers = [
     return HttpResponse.json(serializePost(post))
   }),
   http.patch('/fakeApi/posts/:postId', async ({ request, params }) => {
-    const { id, ...data } = (await request.json()) as Post
+    const { id, user, reactions, ...data } = (await request.json()) as Post
     const postId = firstFromArray(params.postId)
+
     const updatedPost = db.post.update({
       where: { id: { equals: postId } },
       data,
     })!
     await delay(ARTIFICIAL_DELAY_MS)
     return HttpResponse.json(serializePost(updatedPost))
+  }),
+
+  http.delete('/fakeApi/posts/:postId', async ({ params }) => {
+    const postId = firstFromArray(params.postId)
+    db.post.delete({
+      where: { id: { equals: postId } },
+    })
+    await delay(ARTIFICIAL_DELAY_MS)
+    return HttpResponse.json({ success: true })
   }),
 
   http.get('/fakeApi/posts/:postId/comments', async ({ params }) => {
