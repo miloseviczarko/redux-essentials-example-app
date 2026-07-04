@@ -1,10 +1,4 @@
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Outlet,
-  Navigate,
-} from 'react-router-dom'
+import { BrowserRouter as Router, Route, Routes, Outlet, Navigate } from 'react-router-dom'
 
 import { Navbar } from './components/Navbar'
 import { PostsList } from '@/features/posts/PostsList'
@@ -15,10 +9,10 @@ import { useAppSelector } from '@/hooks'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { Spinner } from './components/Spinner'
-import {
-  selectPostsStatus,
-  selectPostsError,
-} from './features/posts/postsSlice'
+import { selectPostsStatus, selectPostsError } from './features/posts/postsSlice'
+import { UsersList } from '@/features/users/UsersList'
+import NotificationsList from '@/features/notifications/NotificationsList'
+import { ToastContainer } from 'react-tiny-toast'
 
 function Index() {
   const postsStatus = useAppSelector(selectPostsStatus)
@@ -56,8 +50,11 @@ function App() {
             <Route path="/posts/:postId" element={<PostPage />}></Route>
             <Route path="/posts/:postId/edit" element={<PostForm />}></Route>
             <Route path="/users/:userId" element={<UserPage />}></Route>
+            <Route path="/users/" element={<UsersList />}></Route>
+            <Route path="/notifications/" element={<NotificationsList />}></Route>
           </Route>
         </Routes>
+        <ToastContainer />
       </div>
     </Router>
   )

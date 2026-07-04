@@ -3,12 +3,27 @@ import { Link } from 'react-router-dom'
 import { UserIcon } from '@/components/UserIcon'
 import { useAppSelector, useAppDispatch } from '@/hooks'
 import { selectCurrentUser } from '@/features/users/usersSlice'
-import { userLogOut } from '@/features/auth/authSlice'
+import { logOut } from '@/features/auth/authSlice'
+import {
+  fetchNotifications,
+  selectUnreadNotificationsCount,
+} from '@/features/notifications/notificationsSlice'
 
 export const Navbar = () => {
   const user = useAppSelector(selectCurrentUser)
   const dispatch = useAppDispatch()
   const isLoggedIn = !!user
+  const unreadNotificationsCount = useAppSelector(
+    selectUnreadNotificationsCount,
+  )
+
+  let unreadNotificationsBadge: React.ReactNode | undefined
+
+  if (unreadNotificationsCount > 0) {
+    unreadNotificationsBadge = (
+      <span className="badge">{unreadNotificationsCount}</span>
+    )
+  }
 
   const navContent = () => {
     if (!isLoggedIn) return
@@ -17,13 +32,25 @@ export const Navbar = () => {
       <div className="navContent">
         <div className="navLinks">
           <Link to={'/posts'}>Posts</Link>
-        </div>
-        <div className="userDetails">
-          <UserIcon size={32} />
-          {user.name}
+          <Link to={'/users'}>Users</Link>
+          <Link to={'/notifications'}>
+            Notifications {unreadNotificationsBadge}
+          </Link>
           <button
             className="button small"
-            onClick={() => dispatch(userLogOut())}
+            onClick={async () => await dispatch(fetchNotifications())}
+          >
+            Refresh notifications
+          </button>
+        </div>
+        <div className="userDetails">
+          <div className="userControls">
+            <UserIcon size={32} />
+            <Link to={`/users/${user.id}`}>{user.name}</Link>
+          </div>
+          <button
+            className="button small"
+            onClick={async () => await dispatch(logOut())}
           >
             Log Out
           </button>

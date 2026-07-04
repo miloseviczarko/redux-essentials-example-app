@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useAppDispatch, useAppSelector } from '@/hooks'
-import { selectPostById, addNewPost, updatePost, } from '@/features/posts/postsSlice'
+import { selectPostById, addNewPost, updatePost } from '@/features/posts/postsSlice'
 import { useParams, useNavigate } from 'react-router-dom'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
 
@@ -18,7 +18,7 @@ interface AddPostFormElements extends HTMLFormElement {
 export function PostForm() {
   const { postId } = useParams()
   const navigate = useNavigate()
-  const post = useAppSelector(selectPostById(postId ?? ''))
+  const post = useAppSelector((state) => selectPostById(state, postId ?? ''))
   const dispatch = useAppDispatch()
   const userId = useAppSelector(selectCurrentUserId)
   const [_, setAddRequestStatus] = useState<'idle' | 'pending'>('idle')
@@ -32,13 +32,11 @@ export function PostForm() {
       postContent: { value: content },
     } = form.elements
 
-    const action = post
-      ? () => updatePost({ ...post, title, content })
-      : () => addNewPost({ title, content, user: userId! })
-
     try {
       setAddRequestStatus('pending')
-      const result = await dispatch(action()).unwrap()
+      const result = post
+        ? await dispatch(updatePost({ ...post, title, content })).unwrap()
+        : await dispatch(addNewPost({ title, content, user: userId! })).unwrap()
       form.reset()
       navigate(`/posts/${result.id}/`)
     } catch (e) {
@@ -61,12 +59,7 @@ export function PostForm() {
           required
         />
         <label htmlFor="postContent">Content</label>
-        <textarea
-          id="postContent"
-          name="postContent"
-          defaultValue={post?.content ?? ''}
-          required
-        />
+        <textarea id="postContent" name="postContent" defaultValue={post?.content ?? ''} required />
         <button type="submit">{`${post ? 'Update' : 'Create'}`} post</button>
       </form>
     </section>

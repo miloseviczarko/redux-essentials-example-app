@@ -3,10 +3,17 @@ import { selectUserById } from '@/features/users/usersSlice'
 
 interface Props {
   userId: string
+  showPrefix?: boolean
 }
 
-export default function PostAuthor({ userId }: Props) {
-  const author = useAppSelector(selectUserById(userId))
+export default function PostAuthor({
+ userId, showPrefix = true 
+}: Props) {
+  const author = useAppSelector((state) => selectUserById(state, userId))
 
-  return <span>by {author?.name ?? 'Unknown author'}</span>
+  return (
+    <span>
+      {showPrefix && 'by'} {author?.name ?? 'Unknown author'}
+    </span>
+  )
 }

@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { setupWorker } from 'msw/browser'
-import { factory, oneOf, manyOf, primaryKey } from '@mswjs/data'
+import {
+ factory, oneOf, manyOf, primaryKey 
+} from '@mswjs/data'
 import { nanoid } from '@reduxjs/toolkit'
 import { faker } from '@faker-js/faker/locale/en'
 import { Server as MockSocketServer, Client } from 'mock-socket'
@@ -187,8 +189,12 @@ export const handlers = [
     await delay(ARTIFICIAL_DELAY_MS)
     return HttpResponse.json(serializePost(post))
   }),
-  http.patch('/fakeApi/posts/:postId', async ({ request, params }) => {
-    const { id, user, reactions, ...data } = (await request.json()) as Post
+  http.patch('/fakeApi/posts/:postId', async ({
+ request, params 
+}) => {
+    const {
+ id, user, reactions, ...data 
+} = (await request.json()) as Post
     const postId = firstFromArray(params.postId)
 
     const updatedPost = db.post.update({
@@ -218,7 +224,9 @@ export const handlers = [
     return HttpResponse.json({ comments: post.comments })
   }),
 
-  http.post('/fakeApi/posts/:postId/reactions', async ({ request, params }) => {
+  http.post('/fakeApi/posts/:postId/reactions', async ({
+ request, params 
+}) => {
     const postId = firstFromArray(params.postId)
     const { reaction } = (await request.json()) as { reaction: ReactionName }
     const post = db.post.findFirst({
@@ -238,7 +246,9 @@ export const handlers = [
     await delay(ARTIFICIAL_DELAY_MS)
     return HttpResponse.json(serializePost(updatedPost))
   }),
-  http.get('/fakeApi/notifications', async ({ request, params }) => {
+  http.get('/fakeApi/notifications', async ({
+ request, params 
+}) => {
     const parsedUrl = new URL(request.url)
     const since = parsedUrl.searchParams.get('since') ?? undefined
     const numNotifications = getRandomInt(1, 5)

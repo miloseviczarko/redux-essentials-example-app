@@ -27,7 +27,7 @@ function PostButtons({ post }: { post: Post }) {
 
 export function PostPage() {
   const { postId } = useParams()
-  const post = useAppSelector(selectPostById(postId!))
+  const post = useAppSelector((state) => selectPostById(state, postId!))
   const currentUserId = useAppSelector(selectCurrentUserId)
 
   if (!post) {

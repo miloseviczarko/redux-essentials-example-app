@@ -8,7 +8,7 @@ import { worker } from './api/server'
 import './primitiveui.css'
 import './index.css'
 import { Provider } from 'react-redux'
-import { store } from './store'
+import { store } from './app/store'
 import { fetchUsers } from '@/features/users/usersSlice'
 
 // Wrap app rendering so we can wait for the mock API to initialize

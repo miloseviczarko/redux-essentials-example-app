@@ -2,6 +2,8 @@ import { configureStore } from '@reduxjs/toolkit'
 import postsReducer from '@/features/posts/postsSlice'
 import usersReducer from '@/features/users/usersSlice'
 import authReducer from '@/features/auth/authSlice'
+import notificationsReducer from '@/features/notifications/notificationsSlice'
+import { listenerMiddleware } from '@/app/listenerMiddleware'
 
 // Define types here first (no imports from slices that would cause circular dependency)
 export const store = configureStore({
@@ -9,7 +11,10 @@ export const store = configureStore({
     posts: postsReducer,
     users: usersReducer,
     auth: authReducer,
+    notifications: notificationsReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().prepend(listenerMiddleware.middleware),
 })
 
 export type AppStore = typeof store
