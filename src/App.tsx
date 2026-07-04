@@ -8,19 +8,16 @@ import UserPage from '@/features/users/UserPage'
 import { useAppSelector } from '@/hooks'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { Spinner } from './components/Spinner'
-import { selectPostsStatus, selectPostsError } from './features/posts/postsSlice'
 import { UsersList } from '@/features/users/UsersList'
 import NotificationsList from '@/features/notifications/NotificationsList'
 import { ToastContainer } from 'react-tiny-toast'
+import { useGetPostsQuery } from '@/features/api/apiSlice'
 
 function Index() {
-  const postsStatus = useAppSelector(selectPostsStatus)
-  const postsError = useAppSelector(selectPostsError)
-  if (postsStatus === 'pending') {
-    return <Spinner />
-  } else if (postsStatus === 'rejected') {
-    return <div>{postsError}</div>
+  const { isError, error } = useGetPostsQuery()
+
+  if (isError) {
+    return <div>{error.toString()}</div>
   }
 
   return (

@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { useAppDispatch, useAppSelector } from '@/hooks'
-import { selectPostById, addNewPost, updatePost } from '@/features/posts/postsSlice'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useAppSelector } from '@/hooks'
+import { useNavigate, useParams } from 'react-router-dom'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
+import { useGetPostQuery, useAddNewPostMutation, useUpdatePostMutation, } from '@/features/api/apiSlice'
 
 interface AddPostFormFields extends HTMLFormControlsCollection {
   postId: HTMLInputElement
@@ -16,10 +16,15 @@ interface AddPostFormElements extends HTMLFormElement {
 }
 
 export function PostForm() {
-  const { postId } = useParams()
   const navigate = useNavigate()
-  const post = useAppSelector((state) => selectPostById(state, postId ?? ''))
-  const dispatch = useAppDispatch()
+  const { postId } = useParams()
+  const { data: post } = useGetPostQuery(postId!, {
+    skip: !postId,
+  })
+
+  const [addNewPost, { isLoading: isAddLoading }] = useAddNewPostMutation()
+  const [updatePost, { isLoading: isUpdateLoading }] = useUpdatePostMutation()
+
   const userId = useAppSelector(selectCurrentUserId)
   const [_, setAddRequestStatus] = useState<'idle' | 'pending'>('idle')
 
@@ -35,10 +40,10 @@ export function PostForm() {
     try {
       setAddRequestStatus('pending')
       const result = post
-        ? await dispatch(updatePost({ ...post, title, content })).unwrap()
-        : await dispatch(addNewPost({ title, content, user: userId! })).unwrap()
+        ? await updatePost({ ...post, title, content }).unwrap()
+        : await addNewPost({ title, content, user: userId! }).unwrap()
       form.reset()
-      navigate(`/posts/${result.id}/`)
+      post && navigate(`/posts/${result.id}/`)
     } catch (e) {
       console.error(e)
     } finally {

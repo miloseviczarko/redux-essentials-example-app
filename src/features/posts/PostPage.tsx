@@ -1,10 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppSelector, useAppDispatch } from '@/hooks'
-import { selectPostById, Post, deletePost } from '@/features/posts/postsSlice'
+import { Post, deletePost } from '@/features/posts/postsSlice'
 import PostAuthor from '@/features/posts/PostAuthor'
 import { TimeAgo } from '@/components/TimeAgo'
 import ReactionButtons from '@/features/posts/ReactionButtons'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
+import { useGetPostQuery } from '@/features/api/apiSlice'
+import { Spinner } from '@/components/Spinner'
 
 function PostButtons({ post }: { post: Post }) {
   const dispatch = useAppDispatch()
@@ -27,8 +29,10 @@ function PostButtons({ post }: { post: Post }) {
 
 export function PostPage() {
   const { postId } = useParams()
-  const post = useAppSelector((state) => selectPostById(state, postId!))
+  const { data: post, isFetching } = useGetPostQuery(postId!)
   const currentUserId = useAppSelector(selectCurrentUserId)
+
+  if (isFetching) return <Spinner />
 
   if (!post) {
     return (

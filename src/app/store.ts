@@ -4,6 +4,7 @@ import usersReducer from '@/features/users/usersSlice'
 import authReducer from '@/features/auth/authSlice'
 import notificationsReducer from '@/features/notifications/notificationsSlice'
 import { listenerMiddleware } from '@/app/listenerMiddleware'
+import apiSlice from '@/features/api/apiSlice'
 
 // Define types here first (no imports from slices that would cause circular dependency)
 export const store = configureStore({
@@ -12,9 +13,10 @@ export const store = configureStore({
     users: usersReducer,
     auth: authReducer,
     notifications: notificationsReducer,
+    [apiSlice.reducerPath]: apiSlice.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().prepend(listenerMiddleware.middleware),
+    getDefaultMiddleware().prepend(listenerMiddleware.middleware).concat(apiSlice.middleware),
 })
 
 export type AppStore = typeof store

@@ -1,14 +1,13 @@
-import { useAppSelector, useAppDispatch } from '@/hooks'
-import { fetchPosts, selectAllPostsIds, selectPostById } from '@/features/posts/postsSlice'
+import { Post } from '@/features/posts/postsSlice'
 import { Link } from 'react-router-dom'
 import { TimeAgo } from '@/components/TimeAgo'
 import ReactionButtons from '@/features/posts/ReactionButtons'
-import { useEffect } from 'react'
 import PostAuthor from '@/features/posts/PostAuthor'
+import { useGetPostsQuery } from '@/features/api/apiSlice'
+import { useMemo } from 'react'
+import classNames from 'classnames'
 
-const PostExcerpt = function ({ postId }: { postId: string }) {
-  const post = useAppSelector((state) => selectPostById(state, postId))
-
+const PostExcerpt = function ({ post }: { post: Post }) {
   return (
     <article className="post-excerpt">
       <h3>
@@ -22,17 +21,25 @@ const PostExcerpt = function ({ postId }: { postId: string }) {
 }
 
 export function PostsList() {
-  const postsIds = useAppSelector(selectAllPostsIds)
-  const dispatch = useAppDispatch()
+  const { data: posts = [], refetch, isFetching } = useGetPostsQuery()
 
-  useEffect(() => {
-    dispatch(fetchPosts())
-  }, [])
+  const sortedPosts = useMemo(() => {
+    return [...posts].sort((p1, p2) => p2.date.localeCompare(p1.date))
+  }, [posts])
+
+  const postsClassName = classNames('posts-container', {
+    disabled: isFetching,
+  })
 
   return (
     <section className="posts-list">
       <h2>Posts</h2>
-      {postsIds?.map((post) => <PostExcerpt key={post} postId={post} />)}
+      <button onClick={refetch}>Refetch posts</button>
+      <div className={postsClassName}>
+        {sortedPosts.map((post) => (
+          <PostExcerpt post={post} />
+        ))}
+      </div>
     </section>
   )
 }

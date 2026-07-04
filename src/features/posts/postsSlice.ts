@@ -1,10 +1,4 @@
-import {
-  createSlice,
-  PayloadAction,
-  createSelector,
-  EntityState,
-  createEntityAdapter,
-} from '@reduxjs/toolkit'
+import { createSlice, PayloadAction, createSelector, EntityState, createEntityAdapter, } from '@reduxjs/toolkit'
 import { logOut } from '@/features/auth/authSlice'
 import { client } from '@/api/client'
 import { createAppAsyncThunk } from '@/app/withTypes'
@@ -44,7 +38,7 @@ export const fetchPosts = createAppAsyncThunk(
   },
 )
 
-type NewPost = Pick<Post, 'title' | 'content' | 'user'>
+export type NewPost = Pick<Post, 'title' | 'content' | 'user'>
 export const addNewPost = createAppAsyncThunk('posts/addNewPost', async (initialPost: NewPost) => {
   const response = await client.post<Post>('/fakeApi/posts', initialPost)
   return response.data
