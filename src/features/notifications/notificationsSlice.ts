@@ -1,7 +1,7 @@
-import { createSlice, createEntityAdapter } from '@reduxjs/toolkit'
-import { createAppAsyncThunk } from '@/app/withTypes'
-import { client } from '@/api/client'
-import { RootState } from '@/app/store'
+import apiSlice from '@/features/api/apiSlice'
+import { createSlice, createEntityAdapter, EntityState, createSelector, createAction, isAnyOf, } from '@reduxjs/toolkit'
+import type { RootState, AppThunk } from '@/app/store'
+import { forceGenerateNotifications } from '@/api/server'
 
 interface ServerNotification {
   id: string
@@ -10,57 +10,120 @@ interface ServerNotification {
   user: string
 }
 
-interface ClientNotifications extends ServerNotification {
+interface MetaNotifications {
+  id: string
   isRead: boolean
   isNew: boolean
 }
 
-const notificationsAdapter = createEntityAdapter<ClientNotifications>({
-  sortComparer: (a, b) => b.date.localeCompare(a.date),
-})
-
-export const fetchNotifications = createAppAsyncThunk(
-  'notifications/fetchNotifications',
-  async (_, thunkApi) => {
-    const existingNotifications = selectAllNotifications(thunkApi.getState())
-    const [latestNotification] = existingNotifications
-    const latestTimestamp = latestNotification ? latestNotification.date : ''
-    const response = await client.get<ServerNotification[]>(
-      `/fakeApi/notifications?since=${latestTimestamp}`,
-    )
-    return response.data
-  },
+const newNotificationReceived = createAction<ServerNotification[]>(
+  'notifications/newNotification',
 )
 
-const initialState = notificationsAdapter.getInitialState()
-const notificationsSlice = createSlice({
-  name: 'notifications',
+const metadataAdapter = createEntityAdapter<MetaNotifications>()
+const initialState: EntityState<MetaNotifications, string> =
+  metadataAdapter.getInitialState()
+
+export const { selectAll, selectEntities: selectMetadataEntities } =
+  metadataAdapter.getSelectors((state: RootState) => state.metaNotifications)
+
+const metaNotificationsSlice = createSlice({
+  name: 'metaNotifications',
   initialState,
   reducers: {
-    markAllAsRead: (state) => state.ids.forEach((id) => (state.entities[id].isRead = true)),
-  },
-  selectors: {
-    selectUnreadNotificationsCount: (state) =>
-      Object.values(state.entities).filter((n) => !n.isRead).length,
+    markAllAsRead: (state) => {
+      Object.values(state.entities).forEach((meta) => (meta.isRead = true))
+    },
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchNotifications.fulfilled, (state, action) => {
-      Object.values(state.entities).forEach((n) => (n.isNew = !n.isRead))
-      notificationsAdapter.upsertMany(
-        state,
-        action.payload.map((n) => ({ ...n, isNew: true, isRead: false })),
-      )
-    })
+    builder.addMatcher(
+      isAnyOf(
+        apiWithNotifications.endpoints.getNotifications.matchFulfilled,
+        newNotificationReceived,
+      ),
+      (state, { payload: notifications }) => {
+        const notificationsMetadata = notifications.map((meta) => ({
+          id: meta.id,
+          isNew: true,
+          isRead: false,
+        }))
+
+        Object.values(state.entities).forEach(
+          (meta) => (meta.isNew = !meta.isRead),
+        )
+
+        metadataAdapter.upsertMany(state, notificationsMetadata)
+      },
+    )
   },
 })
 
-export const { selectUnreadNotificationsCount } = notificationsSlice.selectors
-export const { selectAll: selectAllNotifications } = notificationsAdapter.getSelectors(
-  (state: RootState) => state.notifications,
+export const selectUnreadNotificationsCount = createSelector(
+  selectAll,
+  (metas) => metas.reduce((acc, meta) => acc + (meta.isRead ? 0 : 1), 0),
 )
 
-export const { markAllAsRead } = notificationsSlice.actions
-export default notificationsSlice.reducer
+export const { markAllAsRead } = metaNotificationsSlice.actions
 
-// function pseudoAllNotificationsSelector = (state: RootState) =>
-// innerNotificationsSelector(state.notifications)
+const apiWithNotifications = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    getNotifications: builder.query<ServerNotification[], void>({
+      query: () => '/notifications',
+      async onCacheEntryAdded(_arg, lifecycleApi) {
+        const ws = new WebSocket('ws://localhost')
+
+        try {
+          await lifecycleApi.cacheDataLoaded
+          const listener = (event: MessageEvent<string>) => {
+            const message: {
+              type: 'notifications'
+              payload: ServerNotification[]
+            } = JSON.parse(event.data)
+
+            switch (message.type) {
+              case 'notifications':
+                {
+                  lifecycleApi.updateCachedData((draft) => {
+                    draft.push(...message.payload)
+                  })
+
+                  lifecycleApi.dispatch(
+                    newNotificationReceived(message.payload),
+                  )
+                }
+                break
+              default:
+                break
+            }
+          }
+
+          ws.addEventListener('message', listener)
+        } catch {}
+
+        await lifecycleApi.cacheEntryRemoved
+        ws.close()
+      },
+    }),
+  }),
+})
+
+export const fetchNotificationsWebsocket = (): AppThunk => (_, getState) => {
+  const allNotifications = selectNotificationsData(getState())
+  const [latestNotification] = allNotifications
+  const latestTimestamp = latestNotification?.date ?? ''
+  // Hardcode a call to the mock server to simulate a server push scenario over websockets
+  forceGenerateNotifications(latestTimestamp)
+}
+
+const selectNotificationsResult =
+  apiWithNotifications.endpoints.getNotifications.select()
+
+const emptyNotificationsData = [] as ServerNotification[]
+const selectNotificationsData = createSelector(
+  (state: RootState) => selectNotificationsResult(state)?.data,
+  (notificationsData) => notificationsData ?? emptyNotificationsData,
+)
+
+export const { useGetNotificationsQuery } = apiWithNotifications
+
+export default metaNotificationsSlice.reducer

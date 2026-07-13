@@ -4,18 +4,17 @@ import { UserIcon } from '@/components/UserIcon'
 import { useAppSelector, useAppDispatch } from '@/hooks'
 import { selectCurrentUser } from '@/features/users/usersSlice'
 import { logOut } from '@/features/auth/authSlice'
-import {
-  fetchNotifications,
-  selectUnreadNotificationsCount,
-} from '@/features/notifications/notificationsSlice'
+import { selectUnreadNotificationsCount, useGetNotificationsQuery, fetchNotificationsWebsocket, } from '@/features/notifications/notificationsSlice'
 
 export const Navbar = () => {
+  useGetNotificationsQuery()
+
   const user = useAppSelector(selectCurrentUser)
-  const dispatch = useAppDispatch()
-  const isLoggedIn = !!user
   const unreadNotificationsCount = useAppSelector(
     selectUnreadNotificationsCount,
   )
+  const dispatch = useAppDispatch()
+  const isLoggedIn = !!user
 
   let unreadNotificationsBadge: React.ReactNode | undefined
 
@@ -36,11 +35,8 @@ export const Navbar = () => {
           <Link to={'/notifications'}>
             Notifications {unreadNotificationsBadge}
           </Link>
-          <button
-            className="button small"
-            onClick={async () => await dispatch(fetchNotifications())}
-          >
-            Refresh notifications
+          <button onClick={() => dispatch(fetchNotificationsWebsocket())}>
+            Refetch notifications
           </button>
         </div>
         <div className="userDetails">

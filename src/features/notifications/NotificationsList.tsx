@@ -1,21 +1,24 @@
-import { useAppSelector, useAppDispatch } from '@/hooks'
-import { selectAllNotifications, markAllAsRead, } from '@/features/notifications/notificationsSlice'
+import { useGetNotificationsQuery, markAllAsRead, selectMetadataEntities, } from '@/features/notifications/notificationsSlice'
 import { TimeAgo } from '@/components/TimeAgo'
 import PostAuthor from '@/features/posts/PostAuthor'
-import { useLayoutEffect } from 'react'
 import classnames from 'classnames'
+import { useAppSelector, useAppDispatch } from '@/hooks'
+import { useLayoutEffect } from 'react'
 
 export default function NotificationsList() {
-  const allNotifications = useAppSelector(selectAllNotifications)
+  const { data: notifications = [] } = useGetNotificationsQuery()
+  const metaNotificationsEntities = useAppSelector(selectMetadataEntities)
   const dispatch = useAppDispatch()
 
   useLayoutEffect(() => {
     dispatch(markAllAsRead())
   })
 
-  const renderNotifications = allNotifications.map((notification) => {
+  const renderNotifications = notifications.map((notification) => {
+    const meta = metaNotificationsEntities[notification.id]
+
     const notificationClassname = classnames('notification', {
-      new: notification.isNew,
+      new: meta.isNew,
     })
 
     return (

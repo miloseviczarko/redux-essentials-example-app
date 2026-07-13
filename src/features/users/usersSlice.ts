@@ -1,39 +1,37 @@
-import { createSlice, EntityState, createEntityAdapter } from '@reduxjs/toolkit'
+import { createEntityAdapter, EntityState } from '@reduxjs/toolkit'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
-import { client } from '@/api/client'
-import { createAppAsyncThunk } from '@/app/withTypes'
 import { RootState } from '@/app/store'
+import apiSlice from '@/features/api/apiSlice'
 
-interface User {
+export interface User {
   id: string
   name: string
 }
 
 const usersAdapter = createEntityAdapter<User>()
+const initialState = usersAdapter.getInitialState()
 
-export const fetchUsers = createAppAsyncThunk('users/fetchUsers', async () => {
-  const response = await client.get<User[]>('/fakeApi/users')
-  return response.data
+const apiSliceWithUsers = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    getUsers: builder.query<EntityState<User, string>, void>({
+      query: () => '/users',
+      transformResponse: (response: User[]) => {
+        return usersAdapter.setAll(initialState, response)
+      },
+    }),
+  }),
 })
 
-const initialState: EntityState<User, string> = usersAdapter.getInitialState()
+const selectUsersResult = apiSliceWithUsers.endpoints.getUsers.select()
 
-const usersSlice = createSlice({
-  name: 'users',
-  initialState,
-  reducers: {},
-  extraReducers: (builder) => {
-    builder.addCase(fetchUsers.fulfilled, usersAdapter.setAll)
-  },
-})
-
-export const { selectAll: selectAllUsers, selectById: selectUserById } = usersAdapter.getSelectors(
-  (state: RootState) => state.users,
-)
+export const { selectAll: selectAllUsers, selectById: selectUserById } =
+  usersAdapter.getSelectors(
+    (state: RootState) => selectUsersResult(state).data ?? initialState,
+  )
 
 export const selectCurrentUser = (state: RootState) => {
   const currentUserId = selectCurrentUserId(state)
   return selectUserById(state, currentUserId!)
 }
 
-export default usersSlice.reducer
+export default apiSliceWithUsers

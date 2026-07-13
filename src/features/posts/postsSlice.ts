@@ -1,62 +1,7 @@
-import { createSlice, PayloadAction, createSelector, EntityState, createEntityAdapter, } from '@reduxjs/toolkit'
-import { logOut } from '@/features/auth/authSlice'
-import { client } from '@/api/client'
-import { createAppAsyncThunk } from '@/app/withTypes'
-import { RootState } from '@/app/store'
 import { AppStartListening } from '@/app/listenerMiddleware'
-
-export const addPostsListeners = (startAppListening: AppStartListening) => {
-  startAppListening({
-    actionCreator: addNewPost.fulfilled,
-    effect: async (action, listenerApi) => {
-      const { toast } = await import('react-tiny-toast')
-
-      const toastId = toast.show('New post added!', {
-        variant: 'success',
-        position: 'bottom-right',
-        pause: true,
-      })
-
-      await listenerApi.delay(5000)
-      toast.remove(toastId)
-    },
-  })
-}
-
-export const fetchPosts = createAppAsyncThunk(
-  'posts/fetchPosts',
-  async () => {
-    const response = await client.get<Post[]>('/fakeApi/posts')
-    return response.data
-  },
-  {
-    condition: (_, thunkApi) => {
-      const status = thunkApi.getState().posts.status
-      // when idle run thunk
-      return status === 'idle'
-    },
-  },
-)
-
-export type NewPost = Pick<Post, 'title' | 'content' | 'user'>
-export const addNewPost = createAppAsyncThunk('posts/addNewPost', async (initialPost: NewPost) => {
-  const response = await client.post<Post>('/fakeApi/posts', initialPost)
-  return response.data
-})
-
-export const updatePost = createAppAsyncThunk('posts/updatePost', async (updatedPost: Post) => {
-  await client.patch<Post>(`/fakeApi/posts/${updatedPost.id}`, updatedPost)
-
-  return {
-    changes: updatedPost,
-    id: updatedPost.id,
-  }
-})
-
-export const deletePost = createAppAsyncThunk('posts/deletePost', async (postId: string) => {
-  await client.delete(`/fakeApi/posts/${postId}`)
-  return postId
-})
+import apiSlice from '../api/apiSlice'
+import { createSelector } from '@reduxjs/toolkit'
+import { RootState } from '@/app/store'
 
 interface Reactions {
   thumbsUp: number
@@ -77,76 +22,130 @@ export interface Post {
   reactions: Reactions
 }
 
-interface PostsState extends EntityState<Post, string> {
-  status: 'idle' | 'pending' | 'resolved' | 'rejected'
-  error?: string
+export type NewPost = Pick<Post, 'title' | 'content' | 'user'>
+
+export const addPostsListeners = (startAppListening: AppStartListening) => {
+  startAppListening({
+    matcher: apiSliceWithPosts.endpoints.addNewPost.matchFulfilled,
+    effect: async (_action, listenerApi) => {
+      const { toast } = await import('react-tiny-toast')
+
+      const toastId = toast.show('New post added!', {
+        variant: 'success',
+        position: 'bottom-right',
+        pause: true,
+      })
+
+      await listenerApi.delay(5000)
+      toast.remove(toastId)
+    },
+  })
 }
 
-const postsAdapter = createEntityAdapter<Post>({
-  sortComparer: (a, b) => b.date.localeCompare(a.date),
+const apiSliceWithPosts = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    getPosts: builder.query<Post[], void>({
+      query: () => '/posts',
+      providesTags: (result = []) => [
+        'Post',
+        { type: 'Post', id: 'LIST' },
+        ...result.map(({ id }) => ({ type: 'Post', id }) as const),
+      ],
+    }),
+    getPost: builder.query<Post, string>({
+      query: (postId) => `/posts/${postId}`,
+      providesTags: (_result, _error, arg) => [{ type: 'Post', id: arg }],
+    }),
+    addNewPost: builder.mutation<Post, NewPost>({
+      query: (initialPost) => ({
+        url: '/posts',
+        method: 'POST',
+        body: initialPost,
+      }),
+      invalidatesTags: [{ type: 'Post', id: 'LIST' }],
+    }),
+    updatePost: builder.mutation<Post, Post>({
+      query: (updatedPost) => ({
+        url: `/posts/${updatedPost.id}`,
+        method: 'PATCH',
+        body: updatedPost,
+      }),
+      invalidatesTags: (_result, _error, arg) => [{ type: 'Post', id: arg.id }],
+    }),
+    deletePost: builder.mutation<void, string>({
+      query: (postId: string) => ({
+        url: `/posts/${postId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, arg) => [{ type: 'Post', id: arg }],
+    }),
+    addReaction: builder.mutation<
+      Post,
+      { postId: string; reaction: ReactionName }
+    >({
+      query: ({ postId, reaction }) => ({
+        url: `/posts/${postId}/reactions`,
+        method: 'POST',
+        body: { reaction },
+      }),
+      async onQueryStarted({ postId, reaction }, lifeCycleApi) {
+        const getPostsPatchResult = lifeCycleApi.dispatch(
+          apiSliceWithPosts.util.updateQueryData(
+            'getPosts',
+            undefined,
+            (draft) => {
+              const existing = draft.find((post) => post.id === postId)
+              if (existing) existing.reactions[reaction]++
+            },
+          ),
+        )
+
+        const getPostPatchResult = lifeCycleApi.dispatch(
+          apiSliceWithPosts.util.updateQueryData('getPost', postId, (draft) => {
+            if (draft) draft.reactions[reaction]++
+          }),
+        )
+
+        try {
+          await lifeCycleApi.queryFulfilled
+        } catch {
+          getPostPatchResult.undo()
+          getPostsPatchResult.undo()
+        }
+      },
+    }),
+  }),
 })
 
-const initialState: PostsState = postsAdapter.getInitialState({
-  status: 'idle',
+/*
+function MyMutation<Return, Arg>(params: {
+  query: (args: Arg) => {
+    url: string
+    method: 'GET' | 'POST'
+    body: Record<string, any>
+  }
+  onQueryStarted: (args: Arg) => Return
 })
-
-const postsSlice = createSlice({
-  name: 'posts',
-  initialState,
-  reducers: {
-    reactionAdded: (state, action: PayloadAction<{ postId: string; reaction: ReactionName }>) => {
-      const { postId, reaction } = action.payload
-      const post = state.entities[postId]
-
-      if (post) {
-        post.reactions[reaction]++
-      }
-    },
-  },
-  selectors: {
-    selectPostsStatus: (postsState) => postsState.status,
-    selectPostsError: (postsState) => postsState.error,
-  },
-  extraReducers: (builder) => {
-    // Clear out the list of posts whenever the user logs out
-    builder
-      .addCase(logOut.fulfilled, () => initialState)
-      .addCase(fetchPosts.pending, (state) => {
-        state.status = 'pending'
-      })
-      .addCase(fetchPosts.fulfilled, (state, action) => {
-        state.status = 'resolved'
-        postsAdapter.setAll(state, action.payload)
-      })
-      .addCase(fetchPosts.rejected, (state, action) => {
-        state.status = 'rejected'
-        state.error = action.error.message ?? 'Unknows error'
-      })
-      .addCase(addNewPost.fulfilled, postsAdapter.addOne)
-      .addCase(deletePost.fulfilled, postsAdapter.removeOne)
-      .addCase(updatePost.fulfilled, postsAdapter.updateOne)
-  },
-})
-
-export const { reactionAdded } = postsSlice.actions
-
-export const { selectPostsStatus, selectPostsError } = postsSlice.selectors
+ */
 
 export const {
-  selectAll: selectAllPosts,
-  selectIds: selectAllPostsIds,
-  selectById: selectPostById,
-} = postsAdapter.getSelectors((state: RootState) => state.posts)
+  useGetPostsQuery,
+  useGetPostQuery,
+  useAddNewPostMutation,
+  useUpdatePostMutation,
+  useDeletePostMutation,
+  useAddReactionMutation,
+} = apiSliceWithPosts
 
-export const selectUserPosts = (userId: string) => {
-  const selector = createSelector([selectAllPosts, (_, userId) => userId], (posts, userId) =>
-    posts.filter((p) => p.user === userId),
-  )
+const selectPostsResult = apiSliceWithPosts.endpoints.getPosts.select()
+const selectAllPosts = (state: RootState) => selectPostsResult(state).data ?? []
 
-  return (state: RootState) => selector(state, userId)
-}
+export const selectUserPosts = createSelector(
+  [selectAllPosts, (_, userId: string) => userId],
+  (posts, userId) => posts.filter((p) => p.user === userId),
+)
 
-export default postsSlice.reducer
+export default apiSliceWithPosts
 
 // pseudo code - how slice selectors have to wrap selectors function so can be used with useSelector or
 // useAppSelector which passed RootState and not slice state

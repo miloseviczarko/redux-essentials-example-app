@@ -2,7 +2,11 @@ import React, { useState } from 'react'
 import { useAppSelector } from '@/hooks'
 import { useNavigate, useParams } from 'react-router-dom'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
-import { useGetPostQuery, useAddNewPostMutation, useUpdatePostMutation, } from '@/features/api/apiSlice'
+import {
+  useGetPostQuery,
+  useAddNewPostMutation,
+  useUpdatePostMutation,
+} from './postsSlice'
 
 interface AddPostFormFields extends HTMLFormControlsCollection {
   postId: HTMLInputElement
@@ -22,8 +26,8 @@ export function PostForm() {
     skip: !postId,
   })
 
-  const [addNewPost, { isLoading: isAddLoading }] = useAddNewPostMutation()
-  const [updatePost, { isLoading: isUpdateLoading }] = useUpdatePostMutation()
+  const [addNewPost] = useAddNewPostMutation()
+  const [updatePost] = useUpdatePostMutation()
 
   const userId = useAppSelector(selectCurrentUserId)
   const [_, setAddRequestStatus] = useState<'idle' | 'pending'>('idle')
@@ -64,7 +68,12 @@ export function PostForm() {
           required
         />
         <label htmlFor="postContent">Content</label>
-        <textarea id="postContent" name="postContent" defaultValue={post?.content ?? ''} required />
+        <textarea
+          id="postContent"
+          name="postContent"
+          defaultValue={post?.content ?? ''}
+          required
+        />
         <button type="submit">{`${post ? 'Update' : 'Create'}`} post</button>
       </form>
     </section>

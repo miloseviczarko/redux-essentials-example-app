@@ -1,11 +1,11 @@
-import { Post } from '@/features/posts/postsSlice'
+import { Post, useGetPostsQuery } from '@/features/posts/postsSlice'
 import { Link } from 'react-router-dom'
 import { TimeAgo } from '@/components/TimeAgo'
 import ReactionButtons from '@/features/posts/ReactionButtons'
 import PostAuthor from '@/features/posts/PostAuthor'
-import { useGetPostsQuery } from '@/features/api/apiSlice'
 import { useMemo } from 'react'
 import classNames from 'classnames'
+import { Spinner } from '@/components/Spinner'
 
 const PostExcerpt = function ({ post }: { post: Post }) {
   return (
@@ -21,7 +21,12 @@ const PostExcerpt = function ({ post }: { post: Post }) {
 }
 
 export function PostsList() {
-  const { data: posts = [], refetch, isFetching } = useGetPostsQuery()
+  const {
+    data: posts = [],
+    refetch,
+    isFetching,
+    isLoading,
+  } = useGetPostsQuery()
 
   const sortedPosts = useMemo(() => {
     return [...posts].sort((p1, p2) => p2.date.localeCompare(p1.date))
@@ -31,13 +36,15 @@ export function PostsList() {
     disabled: isFetching,
   })
 
+  if (isLoading) return <Spinner />
+
   return (
     <section className="posts-list">
       <h2>Posts</h2>
       <button onClick={refetch}>Refetch posts</button>
       <div className={postsClassName}>
         {sortedPosts.map((post) => (
-          <PostExcerpt post={post} />
+          <PostExcerpt key={post.id} post={post} />
         ))}
       </div>
     </section>

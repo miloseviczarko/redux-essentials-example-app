@@ -1,4 +1,10 @@
-import { BrowserRouter as Router, Route, Routes, Outlet, Navigate } from 'react-router-dom'
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Outlet,
+  Navigate,
+} from 'react-router-dom'
 
 import { Navbar } from './components/Navbar'
 import { PostsList } from '@/features/posts/PostsList'
@@ -11,7 +17,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { UsersList } from '@/features/users/UsersList'
 import NotificationsList from '@/features/notifications/NotificationsList'
 import { ToastContainer } from 'react-tiny-toast'
-import { useGetPostsQuery } from '@/features/api/apiSlice'
+import { useGetPostsQuery } from '@/features/posts/postsSlice'
 
 function Index() {
   const { isError, error } = useGetPostsQuery()
@@ -48,7 +54,10 @@ function App() {
             <Route path="/posts/:postId/edit" element={<PostForm />}></Route>
             <Route path="/users/:userId" element={<UserPage />}></Route>
             <Route path="/users/" element={<UsersList />}></Route>
-            <Route path="/notifications/" element={<NotificationsList />}></Route>
+            <Route
+              path="/notifications/"
+              element={<NotificationsList />}
+            ></Route>
           </Route>
         </Routes>
         <ToastContainer />

@@ -1,23 +1,26 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAppSelector, useAppDispatch } from '@/hooks'
-import { Post, deletePost } from '@/features/posts/postsSlice'
+import { useAppSelector } from '@/hooks'
+import {
+  Post,
+  useGetPostQuery,
+  useDeletePostMutation,
+} from '@/features/posts/postsSlice'
 import PostAuthor from '@/features/posts/PostAuthor'
 import { TimeAgo } from '@/components/TimeAgo'
 import ReactionButtons from '@/features/posts/ReactionButtons'
 import { selectCurrentUserId } from '@/features/auth/authSlice'
-import { useGetPostQuery } from '@/features/api/apiSlice'
 import { Spinner } from '@/components/Spinner'
 
 function PostButtons({ post }: { post: Post }) {
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const [deletePost] = useDeletePostMutation()
 
   return (
     <>
       <button onClick={() => navigate(`/posts/${post.id}/edit`)}>Edit</button>
       <button
         onClick={async () => {
-          await dispatch(deletePost(post.id))
+          await deletePost(post.id)
           navigate(`/posts`)
         }}
       >
